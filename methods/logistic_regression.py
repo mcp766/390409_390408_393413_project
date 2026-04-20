@@ -34,19 +34,19 @@ class LogisticRegression(object):
         """
         N, D = training_data.shape
         C = get_n_classes(training_labels)
-        Y = label_to_onehot(training_labels)  # (N, C)
+        Y = label_to_onehot(training_labels)
 
         self.weights = np.zeros((D, C))
 
         for _ in range(self.max_iters):
             # Softmax
-            logits = training_data @ self.weights   # (N, C)
+            logits = training_data @ self.weights
             logits -= logits.max(axis=1, keepdims=True)  # stabilité numérique
             exp = np.exp(logits)
-            P = exp / exp.sum(axis=1, keepdims=True)  # (N, C)
+            P = exp / exp.sum(axis=1, keepdims=True)
 
             # Gradient de la cross-entropy
-            grad = training_data.T @ (P - Y) / N   # (D, C)
+            grad = training_data.T @ (P - Y) / N
             self.weights -= self.lr * grad
 
         pred_labels = onehot_to_label(P)

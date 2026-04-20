@@ -38,8 +38,18 @@ def main(args):
 
     # Make a validation set (it can overwrite xtest, ytest)
     if not args.test:
-        ### WRITE YOUR CODE HERE
-        pass
+        val_size = int(0.2 * len(train_features))
+        test_features = train_features[-val_size:]
+        test_labels_reg = train_labels_reg[-val_size:]
+        test_labels_classif = train_labels_classif[-val_size:]
+        train_features = train_features[:-val_size]
+        train_labels_reg = train_labels_reg[:-val_size]
+        train_labels_classif = train_labels_classif[:-val_size]
+
+    mean = train_features.mean(axis=0)
+    std = train_features.std(axis=0)
+    train_features = normalize_fn(train_features, mean, std)
+    test_features = normalize_fn(test_features, mean, std)
 
     ### WRITE YOUR CODE HERE to do any other data processing
 
@@ -50,16 +60,16 @@ def main(args):
         method_obj = DummyClassifier(arg1=1, arg2=2)
 
     elif args.method == "knn":
-        ### WRITE YOUR CODE HERE
-        pass
+        method_obj = KNN(k=args.K, task_kind=args.task)
+        
 
     elif args.method == "logistic_regression":
-        ### WRITE YOUR CODE HERE
-        pass
+        method_obj = LogisticRegression(lr=args.lr, max_iters=args.max_iters)
+        
 
     elif args.method == "linear_regression":
-        ### WRITE YOUR CODE HERE
-        pass
+        method_obj = LinearRegression()
+        
 
     else:
         raise ValueError(f"Unknown method: {args.method}")
