@@ -10,7 +10,67 @@ import os
 
 np.random.seed(100)
 
+def run_one_method(method_name, task_name, args,
+                   train_features, test_features,
+                   train_labels_reg, test_labels_reg,
+                   train_labels_classif, test_labels_classif):
+    """
+    Initialize, train, evaluate and print results for one method/task pair.
+    """
 
+    # Initialize the method
+    if method_name == "dummy_classifier":
+        method_obj = DummyClassifier(arg1=1, arg2=2)
+
+    elif method_name == "knn":
+        method_obj = KNN(k=args.K, task_kind=task_name)
+
+    elif method_name == "logistic_regression":
+        method_obj = LogisticRegression(lr=args.lr, max_iters=args.max_iters)
+
+    elif method_name == "linear_regression":
+        method_obj = LinearRegression()
+
+    else:
+        raise ValueError(f"Unknown method: {method_name}")
+
+    print(f"\n===== {method_name} | {task_name} =====")
+
+    # Classification
+    if task_name == "classification":
+        if method_name == "linear_regression":
+            print("Skipped: linear regression cannot be used for classification.")
+            return
+
+        preds_train = method_obj.fit(train_features, train_labels_classif)
+        preds = method_obj.predict(test_features)
+
+        acc_train = accuracy_fn(preds_train, train_labels_classif)
+        f1_train = macrof1_fn(preds_train, train_labels_classif)
+        print(f"Train set: accuracy = {acc_train:.3f}% - F1-score = {f1_train:.6f}")
+
+        acc_test = accuracy_fn(preds, test_labels_classif)
+        f1_test = macrof1_fn(preds, test_labels_classif)
+        print(f"Test set:  accuracy = {acc_test:.3f}% - F1-score = {f1_test:.6f}")
+
+    # Regression
+    elif task_name == "regression":
+        if method_name == "logistic_regression":
+            print("Skipped: logistic regression cannot be used for regression.")
+            return
+
+        preds_train = method_obj.fit(train_features, train_labels_reg)
+        preds = method_obj.predict(test_features)
+
+        train_mse = mse_fn(preds_train, train_labels_reg)
+        print(f"Train set: MSE = {train_mse:.6f}")
+
+        test_mse = mse_fn(preds, test_labels_reg)
+        print(f"Test set:  MSE = {test_mse:.6f}")
+
+    else:
+        raise ValueError(f"Unknown task: {task_name}")
+    
 def main(args):
     """
     The main function of the script.
@@ -61,60 +121,55 @@ def main(args):
 
     ## 3. Initialize the method you want to use.
 
-    # Follow the "DummyClassifier" example for your methods
-    if args.method == "dummy_classifier":
-        method_obj = DummyClassifier(arg1=1, arg2=2)
+       ## 3. Run one method or all methods
 
-    elif args.method == "knn":
-        method_obj = KNN(k=args.K, task_kind=args.task)
-        
+    if args.method == "all":
+        # Run all valid method/task combinations
+        run_one_method(
+            "dummy_classifier", "classification", args,
+            train_features, test_features,
+            train_labels_reg, test_labels_reg,
+            train_labels_classif, test_labels_classif
+        )
 
-    elif args.method == "logistic_regression":
-        method_obj = LogisticRegression(lr=args.lr, max_iters=args.max_iters)
-        
+        run_one_method(
+            "knn", "classification", args,
+            train_features, test_features,
+            train_labels_reg, test_labels_reg,
+            train_labels_classif, test_labels_classif
+        )
 
-    elif args.method == "linear_regression":
-        method_obj = LinearRegression()
-        
+        run_one_method(
+            "knn", "regression", args,
+            train_features, test_features,
+            train_labels_reg, test_labels_reg,
+            train_labels_classif, test_labels_classif
+        )
+
+        run_one_method(
+            "logistic_regression", "classification", args,
+            train_features, test_features,
+            train_labels_reg, test_labels_reg,
+            train_labels_classif, test_labels_classif
+        )
+
+        run_one_method(
+            "linear_regression", "regression", args,
+            train_features, test_features,
+            train_labels_reg, test_labels_reg,
+            train_labels_classif, test_labels_classif
+        )
 
     else:
-        raise ValueError(f"Unknown method: {args.method}")
+        # Run only the user-specified method/task pair
+        run_one_method(
+            args.method, args.task, args,
+            train_features, test_features,
+            train_labels_reg, test_labels_reg,
+            train_labels_classif, test_labels_classif
+        )
 
     ## 4. Train and evaluate the method
-
-    if args.task == "classification":
-        assert args.method != "linear_regression", "Linear regression cannot be used for classification"        # Fit the method on training data
-        preds_train = method_obj.fit(train_features, train_labels_classif)
-
-        # Predict on unseen data
-        preds = method_obj.predict(test_features)
-
-        # Report results: performance on train and valid/test sets
-        acc = accuracy_fn(preds_train, train_labels_classif)
-        macrof1 = macrof1_fn(preds_train, train_labels_classif)
-        print(f"\nTrain set: accuracy = {acc:.3f}% - F1-score = {macrof1:.6f}")
-
-        acc = accuracy_fn(preds, test_labels_classif)
-        macrof1 = macrof1_fn(preds, test_labels_classif)
-        print(f"Test set:  accuracy = {acc:.3f}% - F1-score = {macrof1:.6f}")
-
-    elif args.task == "regression":
-        assert args.method != "logistic_regression", "Logistic regression cannot be used for regression"        # Fit the method on training data
-        preds_train = method_obj.fit(train_features, train_labels_reg)
-
-        # Predict on unseen data
-        preds = method_obj.predict(test_features)
-
-        # Report results: MSE on train and valid/test sets
-        train_mse = mse_fn(preds_train, train_labels_reg)
-        print(f"\nTrain set: MSE = {train_mse:.6f}")
-
-        test_mse = mse_fn(preds, test_labels_reg)
-        print(f"Test set:  MSE = {test_mse:.6f}")
-
-    else:
-        raise ValueError(f"Unknown task: {args.task}")
-    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -126,9 +181,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--method",
-        default="dummy_classifier",
+        default="all",
         type=str,
-        help="dummy_classifier / knn / logistic_regression / linear_regression",
+        help="all / dummy_classifier / knn / logistic_regression / linear_regression",
     )
     parser.add_argument(
         "--data_path",
