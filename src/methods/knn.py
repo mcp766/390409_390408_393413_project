@@ -93,4 +93,4 @@ class KNN(object):
                 pred = np.sum(weights * nn_labels) / np.sum(weights)
 
             test_labels.append(pred)
-        return test_labels
+        return np.array(test_labels)
