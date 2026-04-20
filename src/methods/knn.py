@@ -47,9 +47,21 @@ class KNN(object):
         Returns:
             test_labels (np.array): labels of shape (N,)
         """
-        ##
-        ###
-        #### YOUR CODE HERE!
-        ###
-        ##
+         
+        test_labels = []
+
+        # Loop over each test sample
+        for x in test_data:
+            
+        # Step 1: Compute distances from x to all training points
+            # We use Euclidean distance 
+            distances = np.linalg.norm(self.training_data - x, axis=1)
+
+        # Step 2: Get indices of the k nearest neighbors
+            nn_indices = np.argsort(distances)[:self.k]
+
+        # Step 3: Retrieve the corresponding labels
+            nn_labels = self.training_labels[nn_indices]
+            nn_distances = distances[nn_indices]
+
         return test_labels
