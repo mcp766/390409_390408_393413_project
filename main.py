@@ -1,5 +1,7 @@
 import argparse
 import numpy as np
+import time
+import matplotlib.pyplot as plt
 
 from src.methods.dummy_methods import DummyClassifier
 from src.methods.logistic_regression import LogisticRegression
@@ -13,9 +15,11 @@ np.random.seed(100)
 def run_one_method(method_name, task_name, args,
                    train_features, test_features,
                    train_labels_reg, test_labels_reg,
-                   train_labels_classif, test_labels_classif):
+                   train_labels_classif, test_labels_classif,
+                   verbose=True):
     """
-    Initialize, train, evaluate and print results for one method/task pair.
+    Initialize, train, evaluate and optionally print results for one method/task pair.
+    Returns a dictionary of results.
     """
 
     # Initialize the method
@@ -34,43 +38,137 @@ def run_one_method(method_name, task_name, args,
     else:
         raise ValueError(f"Unknown method: {method_name}")
 
-    print(f"\n===== {method_name} | {task_name} =====")
+    if verbose:
+        print(f"\n===== {method_name} | {task_name} =====")
+
+    results = {
+        "method": method_name,
+        "task": task_name,
+    }
 
     # Classification
     if task_name == "classification":
         if method_name == "linear_regression":
-            print("Skipped: linear regression cannot be used for classification.")
-            return
+            if verbose:
+                print("Skipped: linear regression cannot be used for classification.")
+            return None
 
+        t1 = time.time()
         preds_train = method_obj.fit(train_features, train_labels_classif)
+        t2 = time.time()
+
         preds = method_obj.predict(test_features)
+        t3 = time.time()
 
         acc_train = accuracy_fn(preds_train, train_labels_classif)
         f1_train = macrof1_fn(preds_train, train_labels_classif)
-        print(f"Train set: accuracy = {acc_train:.3f}% - F1-score = {f1_train:.6f}")
-
         acc_test = accuracy_fn(preds, test_labels_classif)
         f1_test = macrof1_fn(preds, test_labels_classif)
-        print(f"Test set:  accuracy = {acc_test:.3f}% - F1-score = {f1_test:.6f}")
+
+        results.update({
+            "train_accuracy": acc_train,
+            "train_f1": f1_train,
+            "test_accuracy": acc_test,
+            "test_f1": f1_test,
+            "train_time": t2 - t1,
+            "predict_time": t3 - t2,
+        })
+
+        if verbose:
+            print(f"Train set: accuracy = {acc_train:.3f}% - F1-score = {f1_train:.6f}")
+            print(f"Test set:  accuracy = {acc_test:.3f}% - F1-score = {f1_test:.6f}")
+            print(f"Runtime:   fit = {t2 - t1:.6f}s - predict = {t3 - t2:.6f}s")
 
     # Regression
     elif task_name == "regression":
         if method_name == "logistic_regression":
-            print("Skipped: logistic regression cannot be used for regression.")
-            return
+            if verbose:
+                print("Skipped: logistic regression cannot be used for regression.")
+            return None
 
+        if method_name == "dummy_classifier":
+            if verbose:
+                print("Skipped: dummy classifier is not used for regression.")
+            return None
+
+        t1 = time.time()
         preds_train = method_obj.fit(train_features, train_labels_reg)
+        t2 = time.time()
+
         preds = method_obj.predict(test_features)
+        t3 = time.time()
 
         train_mse = mse_fn(preds_train, train_labels_reg)
-        print(f"Train set: MSE = {train_mse:.6f}")
-
         test_mse = mse_fn(preds, test_labels_reg)
-        print(f"Test set:  MSE = {test_mse:.6f}")
+
+        results.update({
+            "train_mse": train_mse,
+            "test_mse": test_mse,
+            "train_time": t2 - t1,
+            "predict_time": t3 - t2,
+        })
+
+        if verbose:
+            print(f"Train set: MSE = {train_mse:.6f}")
+            print(f"Test set:  MSE = {test_mse:.6f}")
+            print(f"Runtime:   fit = {t2 - t1:.6f}s - predict = {t3 - t2:.6f}s")
 
     else:
         raise ValueError(f"Unknown task: {task_name}")
-    
+
+    return results
+
+def plot_knn_vs_k_classification(k_values, acc_values, f1_values, save_path="knn_classification_vs_k.png"):
+    plt.figure()
+    plt.plot(k_values, acc_values, marker='o', label="Accuracy")
+    plt.plot(k_values, f1_values, marker='s', label="Macro F1")
+    plt.xlabel("K")
+    plt.ylabel("Score")
+    plt.title("KNN classification performance vs K")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_knn_vs_k_regression(k_values, mse_values, save_path="knn_regression_vs_k.png"):
+    plt.figure()
+    plt.plot(k_values, mse_values, marker='o')
+    plt.xlabel("K")
+    plt.ylabel("MSE")
+    plt.title("KNN regression performance vs K")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
+def print_summary_tables(results_list):
+    print("\n==============================")
+    print("Classification summary")
+    print("==============================")
+    print("Method                Train Acc    Test Acc     Train F1     Test F1      Fit Time(s)   Pred Time(s)")
+    for r in results_list:
+        if r is None or r["task"] != "classification":
+            continue
+        print(f"{r['method']:<20} {r['train_accuracy']:>10.3f} {r['test_accuracy']:>11.3f} "
+              f"{r['train_f1']:>11.6f} {r['test_f1']:>11.6f} "
+              f"{r['train_time']:>12.6f} {r['predict_time']:>13.6f}")
+
+    print("\n==============================")
+    print("Regression summary")
+    print("==============================")
+    print("Method                Train MSE    Test MSE     Fit Time(s)   Pred Time(s)")
+    for r in results_list:
+        if r is None or r["task"] != "regression":
+            continue
+        print(f"{r['method']:<20} {r['train_mse']:>10.6f} {r['test_mse']:>11.6f} "
+              f"{r['train_time']:>12.6f} {r['predict_time']:>13.6f}")
+        
+
+
+
 def main(args):
     """
     The main function of the script.
@@ -117,52 +215,101 @@ def main(args):
     std[std == 0] = 1 # Avoid division by zero for constant features
     train_features = normalize_fn(train_features, mean, std)
     test_features = normalize_fn(test_features, mean, std)
+        # Values of K to test for KNN plots
+    k_values = [1, 3, 5, 7, 9, 11, 15]
 
 
     ## 3. Initialize the method you want to use.
 
        ## 3. Run one method or all methods
 
+    results_list = []
+
     if args.method == "all":
-        # Run all valid method/task combinations
-        run_one_method(
+        # Run all main method/task combinations and store the results
+        results_list.append(run_one_method(
             "dummy_classifier", "classification", args,
             train_features, test_features,
             train_labels_reg, test_labels_reg,
             train_labels_classif, test_labels_classif
-        )
+        ))
 
-        run_one_method(
+        results_list.append(run_one_method(
             "knn", "classification", args,
             train_features, test_features,
             train_labels_reg, test_labels_reg,
             train_labels_classif, test_labels_classif
-        )
+        ))
 
-        run_one_method(
+        results_list.append(run_one_method(
             "knn", "regression", args,
             train_features, test_features,
             train_labels_reg, test_labels_reg,
             train_labels_classif, test_labels_classif
-        )
+        ))
 
-        run_one_method(
+        results_list.append(run_one_method(
             "logistic_regression", "classification", args,
             train_features, test_features,
             train_labels_reg, test_labels_reg,
             train_labels_classif, test_labels_classif
-        )
+        ))
 
-        run_one_method(
+        results_list.append(run_one_method(
             "linear_regression", "regression", args,
             train_features, test_features,
             train_labels_reg, test_labels_reg,
             train_labels_classif, test_labels_classif
-        )
+        ))
+
+        # Print summary tables
+        print_summary_tables(results_list)
+
+        # Save current K so we can restore it later
+        original_k = args.K
+
+        # KNN classification: performance vs K
+        acc_values = []
+        f1_values = []
+        for k in k_values:
+            args.K = k
+            r = run_one_method(
+                "knn", "classification", args,
+                train_features, test_features,
+                train_labels_reg, test_labels_reg,
+                train_labels_classif, test_labels_classif,
+                verbose=False
+            )
+            acc_values.append(r["test_accuracy"])
+            f1_values.append(r["test_f1"])
+
+        plot_knn_vs_k_classification(k_values, acc_values, f1_values)
+
+        # KNN regression: performance vs K
+        mse_values = []
+        for k in k_values:
+            args.K = k
+            r = run_one_method(
+                "knn", "regression", args,
+                train_features, test_features,
+                train_labels_reg, test_labels_reg,
+                train_labels_classif, test_labels_classif,
+                verbose=False
+            )
+            mse_values.append(r["test_mse"])
+
+        plot_knn_vs_k_regression(k_values, mse_values)
+
+        # Restore original K
+        args.K = original_k
+
+        print("\nSaved plots:")
+        print(" - knn_classification_vs_k.png")
+        print(" - knn_regression_vs_k.png")
 
     else:
         # Run only the user-specified method/task pair
-        run_one_method(
+        result = run_one_method(
             args.method, args.task, args,
             train_features, test_features,
             train_labels_reg, test_labels_reg,
