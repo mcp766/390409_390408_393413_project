@@ -118,31 +118,29 @@ def run_one_method(method_name, task_name, args,
 
     return results
 
-def plot_knn_vs_k_classification(k_values, acc_values, f1_values, save_path="knn_classification_vs_k.png"):
-    plt.figure()
-    plt.plot(k_values, acc_values, marker='o', label="Accuracy")
-    plt.plot(k_values, f1_values, marker='s', label="Macro F1")
-    plt.xlabel("K")
-    plt.ylabel("Score")
-    plt.title("KNN classification performance vs K")
-    plt.legend()
-    plt.grid(True)
+def plot_knn(k_values, acc_values, f1_values, mse_values, save_path="knn_vs_k_combined.png"):
+    fig, axs = plt.subplots(2, 1, figsize=(6, 8))
+
+    # ===== Classification =====
+    axs[0].plot(k_values, acc_values, marker='o', label="Accuracy")
+    axs[0].plot(k_values, f1_values, marker='s', label="Macro F1")
+    axs[0].set_title("KNN Classification vs K")
+    axs[0].set_xlabel("K")
+    axs[0].set_ylabel("Score")
+    axs[0].legend()
+    axs[0].grid(True)
+
+    # ===== Regression =====
+    axs[1].plot(k_values, mse_values, marker='o', color='red', label="MSE")
+    axs[1].set_title("KNN Regression vs K")
+    axs[1].set_xlabel("K")
+    axs[1].set_ylabel("MSE")
+    axs[1].legend()
+    axs[1].grid(True)
+
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
-
-
-def plot_knn_vs_k_regression(k_values, mse_values, save_path="knn_regression_vs_k.png"):
-    plt.figure()
-    plt.plot(k_values, mse_values, marker='o')
-    plt.xlabel("K")
-    plt.ylabel("MSE")
-    plt.title("KNN regression performance vs K")
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig(save_path)
-    plt.close()
-
 
 def print_summary_tables(results_list):
     print("\n==============================")
@@ -283,8 +281,6 @@ def main(args):
             acc_values.append(r["test_accuracy"])
             f1_values.append(r["test_f1"])
 
-        plot_knn_vs_k_classification(k_values, acc_values, f1_values)
-
         # KNN regression: performance vs K
         mse_values = []
         for k in k_values:
@@ -298,8 +294,9 @@ def main(args):
             )
             mse_values.append(r["test_mse"])
 
-        plot_knn_vs_k_regression(k_values, mse_values)
-
+    
+        plot_knn(k_values, acc_values, f1_values, mse_values)
+        
         # Restore original K
         args.K = original_k
 
